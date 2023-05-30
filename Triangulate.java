@@ -14,7 +14,9 @@ class Vertex {
   float x;
   float y;
   float z;
-
+  
+  int pathNo;
+   
   public Vertex() {}
 
   public Vertex(float x, float y, float z) {
@@ -22,7 +24,14 @@ class Vertex {
     this.x = x;
     this.y = y;
     this.z = z;
+    this.pathNo = 999;
+  }
+  public Vertex(double x, double y, double z) {
 
+    this.x = (float)x;
+    this.y = (float)y;
+    this.z = (float)z;
+    this.pathNo = 999;
   }
   public static Vertex sub(Vertex v1,Vertex v2) {
     float x = v1.x - v2.x;
@@ -31,8 +40,14 @@ class Vertex {
     return new Vertex(x,y,z);
 
   }
+  public static Vertex add(Vertex v1, Vertex v2) {
+    return new Vertex(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z); 
+  }
+  public static Vertex add(Vertex v1, Vertex v2, float k) {
+    return new Vertex(v1.x + v2.x*k, v1.y + v2.y*k, v1.z + v2.z*k); 
+  }
   public String toString() {
-    return x + " " + y + " " + z;
+    return "( " + x + "," + y + "," + z + " )";
   }
 
   //@Override
@@ -74,7 +89,203 @@ class Line {
   public String toString() {
     return "Line: " + v1 + " to " + v2;
   }
+  public static Line add(Line a, Line b) {
+    
+    Vertex p1 = Vertex.add(a.getVertex1(),b.getVertex1());
+    Vertex p2 = Vertex.add(a.getVertex2(),b.getVertex2());
+    return new Line(p1,p2);
 
+  }
+  //unit vector in Vertex b
+  public static Line add(Line a, Vertex b) {
+    
+    Vertex p1 = Vertex.add(a.getVertex1(),b);
+    Vertex p2 = Vertex.add(a.getVertex2(),b);
+    return new Line(p1,p2);
+
+  }
+
+  public static Line add(Line a, Vertex b, float k) {
+    
+    Vertex p1 = Vertex.add(a.getVertex1(),b,k);
+    Vertex p2 = Vertex.add(a.getVertex2(),b,k);
+    return new Line(p1,p2);
+
+  }
+
+  //unit vector in Vertex b
+  public Vertex getNormal(){
+
+            double x0 = getVertex1().x;
+            double x1 = getVertex2().x;
+
+            double y0 = getVertex1().y;
+            double y1 = getVertex2().y;
+
+            double ux = x1-x0;
+            double uy = y1-y0;
+            double rx = 0;
+            double ry = 1;
+            double nx = ux*rx - uy*ry;
+            double ny = ux*ry + uy*rx;
+            nx = -uy;
+            ny =  ux;
+            double mag = (double)Math.sqrt(nx*nx + ny*ny);
+            nx /= mag;
+            ny /= mag;
+            //System.out.println("normal: " + nx + " " + ny);
+            return new Vertex((float)nx,(float)ny,0);
+            
+  }
+
+  public static Vertex getIntersection(Line a,Line b,boolean c){
+            
+            System.out.println("Line A: " + a);
+            System.out.println("Line B: " + b);
+
+            float x1 = a.getVertex1().x;
+            float x2 = a.getVertex2().x;
+
+            float y1 = a.getVertex1().y;
+            float y2 = a.getVertex2().y;
+
+            float x3 = b.getVertex1().x;
+            float x4 = b.getVertex2().x;
+
+            float y3 = b.getVertex1().y;
+            float y4 = b.getVertex2().y;
+
+            double d = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+            double px = 0.0;
+            double py = 0.0;
+            
+            //if (d!=0.0) {
+            if(Math.abs(d) > 0.0001) {
+                 px = (x1*y2 - y1*x2)*(x3-x4) - (x1-x2)*(x3*y4 - y3*x4);
+                 px = px/d;
+                 py = (x1*y2 - y1*x2)*(y3-y4) - (y1-y2)*(x3*y4 - y3*x4);
+                 py = py/d; 
+            } 
+            else {
+                 System.out.println("coincident lines: fix this algorithm");
+
+                 px = x1+(x4-x2);  
+                 //px = x2;
+                 py = y1+(y4-y2);
+                 //py = y2;  
+                 
+            }
+
+            return new Vertex((float)px,(float)py,0);
+
+  }
+  public static Vertex getIntersection(Line a,Line b){
+            
+            float ax0 = a.getVertex1().x;
+            float ax1 = a.getVertex2().x;
+
+            float ay0 = a.getVertex1().y;
+            float ay1 = a.getVertex2().y;
+
+            float bx0 = b.getVertex1().x;
+            float bx1 = b.getVertex2().x;
+
+            float by0 = b.getVertex1().y;
+            float by1 = b.getVertex2().y;
+
+            float dxa = ax1-ax0;
+            float dxb = bx1-bx0;
+            System.out.println(a + " " + b);
+
+            if(dxa == 0.0f && dxb==0.0f){
+                System.out.println("2 infinite slope");
+                System.out.println(a + " " + b);
+                float x = ax0 + 0.5f*(bx1-ax0);
+                float y = ay0 + 0.5f*(by1-ay0);
+                return new Vertex(x,y,0);
+            }
+            if(dxa == 0.0f){
+                
+                float mb = (by1-by0)/dxb;
+                float binter = by1 - mb*bx1;
+                float x = ax0;
+                float y = by0 + mb*(by1-by0);
+                System.out.println("a slope inf: " + x + " " + y);
+                return new Vertex(x,y,0);
+            }
+            if(dxb == 0.0f){
+                
+                float ma = (ay1-ay0)/dxa;
+                float ainter = ay1 - ma*ax1;
+                float x = bx0 ;
+                float y = ay0 + ma*(ax1-ax0);
+                System.out.println("b slope inf" + x + " " + y);
+                return new Vertex(x,y,0);
+            }
+
+            //clip infinitely long lines
+            double ma = (ay1-ay0)/(ax1-ax0);
+            double mb = (by1-by0)/(bx1-bx0);
+            double ainter = ay1-ma*ax1;
+            double binter = by1-mb*bx1;
+            
+            System.out.println("a param: " + ma + "  " + ainter + (ma<-Float.MAX_VALUE || ma>Float.MAX_VALUE));
+            System.out.println("b param: " + mb + "  " + binter + (mb<-Float.MAX_VALUE || mb>Float.MAX_VALUE));
+
+          
+            // calc intercept by substitution
+            double d = (binter-ainter)/(ma-mb);
+            double f = (binter * ma - ainter*ma)/(ma-mb) + ainter;
+            double y = f;
+            double x = d;
+
+            double dm = ma-mb;
+            dm = Math.abs(dm);
+
+            if(ma==mb || dm < 1e-3) {
+              System.out.println("slope equal");
+              x = ax0 + 0.5f*(bx1-ax0);
+              y = ay0 + 0.5f*(by1-ay0);
+              return new Vertex(x,y,0); 
+            }
+            if(ma==0.0f) {
+             y = ainter;
+             x = (ainter-binter)/mb;
+              
+            }
+            System.out.println("x,y "+ x + " "+ y);
+            return new Vertex(x,y,0);
+
+  }
+  public Vertex findIntersection(Line b){
+            float x1 = this.v1.x;
+            float x2 = this.v2.x;
+            float y1 = this.v1.y;
+            float y2 = this.v2.y;
+            float x3 = b.v1.x;
+            float x4 = b.v2.x;
+            float y3 = b.v1.y;
+            float y4 = b.v2.y;
+
+            float t = (x1-x3)*(y3-y4)-(y1-y3)*(x3-x4);
+            float td= (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);
+            
+            float u = (x1-x3)*(y1-y2)-(y1-y3)*(x1-x2);
+            t= t/td;
+            u= u/td;
+            
+            if( (t>=0 && t<=1) && (u>=0 && u<=1) ) {
+              //System.out.println((t));
+              //System.out.println((u));
+              float px = x1 + t*(x2-x1);
+              float py = y1 + t*(y2-y1);
+              //System.out.println(px+"  "+py);
+              return new Vertex(px,py,0);
+            }
+            
+            return null;  
+
+  }
 }
 
 class Tri {
@@ -197,32 +408,9 @@ class Tri {
       System.out.println(v3);
     }
     */
-    /*
-    if(i>1) {
-      int x = (int)verts[0].x;
-      if(x==34) {
-        System.out.println("vert0: " + verts[0].x + "  " + verts[0].y);
-        System.out.println(z);
-        System.out.println(v1);
-        System.out.println(v2);
-        System.out.println(v3);
-      }
-    }*/
+
     if(i==3) System.out.println("(3 intersects found)");
-    /*
-    if(i>1) {
-      
-      if( (Math.abs(verts[0].y) < 1e-3) || (Math.abs(verts[1].y) <1e-3) ) {
-        System.out.println("artifact:");
-        System.out.println(verts[0] + "  " + verts[1]);
-        System.out.println(z);
-        System.out.println(v1);
-        System.out.println(v2);
-        System.out.println(v3);
-        System.out.println("");
-      }
-    }
-    */
+
 
     return new Line(verts[0],verts[1]);
 
@@ -299,8 +487,6 @@ class DistanceLine implements Comparator<DistanceLine> {
  
 class STLwriter {
 
-
-
   public static void writeFacet( Tri tri ) {
 
     StringBuilder sb = new StringBuilder();
@@ -318,8 +504,108 @@ class STLwriter {
   
 
 }
+class SortByY implements Comparator<Vertex> {
+  
+  public int compare(Vertex a, Vertex b) 
+  {
+    float r = a.y-b.y;
+    if(r==0.0f) return 0;
+    if(r < 0.0f) return -1;
+    return 1;
+
+  }
+
+
+}
+
+class ShellBuildDirection {
+  public int pathNo;
+  public String shellType="";
+
+  public void set(int pathNo, String type) {
+
+    this.pathNo = pathNo;
+
+    if(type.equals("INNER") && shellType.equals("OUTER")) {
+        shellType = "INNER";
+    }
+    else {
+        shellType = type;
+    }
+
+  }
+
+  public String toString() {
+    return pathNo + "  " + shellType;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if(o==null) return false;
+    if(getClass() != o.getClass()) return false;
+
+    ShellBuildDirection s = (ShellBuildDirection)o;
+    if( (pathNo == s.pathNo) && (shellType.equals(s.shellType)) ) return true;
+
+    return false; 
+
+  }
+
+  public int hashCode() {
+
+    return 31 * pathNo + shellType.hashCode();
+
+  }
+
+}
+
+class ShellBuildSet {
+
+    Set<ShellBuildDirection> shellSet = new HashSet<>();
+
+    // An INNER shelltype can override
+    // an OUTER shelltype
+    // however if an INNER shell type is already set for the path
+    // then it can not be set as an OUTER
+    public void add(ShellBuildDirection s) {
+    
+        ShellBuildDirection sbd = new ShellBuildDirection();
+        sbd.set(s.pathNo, "OUTER");
+       
+        if(s.shellType.equals("INNER")) {
+          
+          if (shellSet.contains(sbd)) {
+            shellSet.remove(sbd);
+          }
+          
+          shellSet.add(s);
+          
+        } else if (s.shellType.equals("OUTER")) {
+
+          sbd.set(s.pathNo, "INNER");
+          if(!shellSet.contains(sbd)) {
+            shellSet.add(s);
+          }
+
+        } 
+        else {
+          
+          shellSet.add(s);
+        }
+       
+    }
+
+    public String toString() {
+      return shellSet.toString();
+    }
+
+}
 public class Triangulate {
+
     static List<Line> p = new ArrayList<>();
+
+    static ShellBuildSet shell = new ShellBuildSet();
+
     static float minX = Float.MAX_VALUE;
     static float maxX = -Float.MAX_VALUE;
 
@@ -402,6 +688,41 @@ public class Triangulate {
             }
             return lines;
     }
+
+    public static List<Vertex> makeInsetPath(List<Line> path) {
+
+      List<Vertex> insetPath = new ArrayList<>();
+
+      Line g = path.get(0);
+      Vertex n = g.getNormal();
+      //move line A along normal
+      Line r = Line.add(g,n,-0.4f); 
+
+      for(int i=1;i<path.size();i++) {
+        
+        Line g1 = path.get(i);
+        Vertex n1 = g1.getNormal();
+        //move line B along normal
+        Line r1 = Line.add(g1,n1,-0.4f);
+
+        System.out.println("inset loop");
+        System.out.println(r + "  \n");
+        System.out.println(g1 + "::: normal => " + n1 + " = \n" + r1 +"\n");
+
+        Vertex intersection = Line.getIntersection(r,r1,true);
+
+        System.out.println("intersection " + intersection);
+        System.out.println("");
+
+        //Vertex intersection = g.getVertex1();
+
+        insetPath.add(intersection);
+        r = r1;
+         
+      }
+      
+      return insetPath;
+    }
     public static void addGcodePrefix() {
       StringBuilder sb = new StringBuilder();
       
@@ -421,6 +742,7 @@ public class Triangulate {
       System.out.println(sb);
     }
     public static void convertToGcode(List<Line> pathIn, float z, float scale) {
+
       List<Line> path = new ArrayList<>(pathIn);
       StringBuilder sb = new StringBuilder();
       String fmt0 = "G0 X%.4f Y%.4f\n";
@@ -429,7 +751,7 @@ public class Triangulate {
       float x0 =  path.get(0).getVertex1().x * scale;
       float y0 =  path.get(0).getVertex1().y * scale;
       
-      String s = String.format("G1 Z%.4f\n",z);
+      String s = String.format("G0 Z%.4f\n",z);
       sb.append(s);
 
       s = String.format(fmt0,x0,y0);
@@ -451,8 +773,160 @@ public class Triangulate {
       System.out.println(sb);
 
     }
+    public static void convertVertexToGcode(List<Vertex> pathIn, float z) {
+
+      List<Vertex> path = new ArrayList<>(pathIn);
+      StringBuilder sb = new StringBuilder();
+      String fmt0 = "G0 X%.4f Y%.4f\n";
+      String fmt = "G1 X%.4f Y%.4f\n";
+      // move to first
+      float x0 =  path.get(0).x;
+      float y0 =  path.get(0).y;
+      
+      String s = String.format("G0 Z%.4f\n",z);
+      sb.append(s);
+
+      s = String.format(fmt0,x0,y0);
+      sb.append(s);
+      path.remove(0);
+
+      for(Vertex l : path) {
+         s = String.format("G1 X%.4f Y%.4f\n",l.x ,l.y);
+         sb.append(s);
+      }
+   
+      s = String.format(fmt, x0, y0);
+      sb.append(s);
+
+      System.out.println(sb);
+
+    }
+    public static void fillGCode(List<Line> fill) {
+
+      String fmt0 = "G0 X%.4f Y%.4f\n";
+      String fmt1 = "G1 X%.4f Y%.4f\n";
+
+      StringBuilder sb = new StringBuilder();
+
+      if(fill.size() < 1) return;
+
+      float x0 = fill.get(0).v1.x;
+      float y0 = fill.get(0).v1.y;
+      float x1 = fill.get(0).v2.x;
+      float y1 = fill.get(0).v2.y;
+
+      sb.append(String.format(fmt0, x0, y0));
+      sb.append(String.format(fmt1, x1, y1));
+      fill.remove(0);
+      boolean reverse=false;
+      while(fill.size()>0) {
+          x0 = fill.get(0).v1.x;
+          y0 = fill.get(0).v1.y;
+          x1 = fill.get(0).v2.x;
+          y1 = fill.get(0).v2.y;
+         if(reverse) {
+           sb.append(String.format(fmt1, x1, y1));
+           sb.append(String.format(fmt1, x0, y0));
+         }
+         else {
+           sb.append(String.format(fmt1, x0, y0));
+           sb.append(String.format(fmt1, x1, y1));
+         }
+         reverse = !reverse;
+         fill.remove(0);
+      }
+      System.out.println(sb);
+
+    }
+    public static void addFillX(List<List<Line>> paths) {
+      List<Line> fillList0 = new ArrayList<Line>();
+      List<Line> fillList1 = new ArrayList<Line>();
+
+      float dxl = 0.4f;
+      for(float xl=minX; xl<=maxX; xl+=dxl) {
+        
+         Vertex a = new Vertex(xl,-200,0);
+         Vertex b = new Vertex(xl,200,0);
+         Line fillLine = new Line(a,b);
+         List<Vertex> verts = new ArrayList<>();
+         // find all intersects with the paths(if any)
+         int pathNo = 0;
+         for(List<Line> fPath : paths) {
+
+            for (Line g : fPath) {
+
+              Vertex v = g.findIntersection(fillLine);
+              
+              if(v!=null) {
+                 v.pathNo = pathNo;
+                 verts.add(v);
+              }
+
+            } // one path done
+
+            // found all intersects now sort for fill order
+            pathNo++;
+
+         }//all paths considered
+
+         if(verts.size()>1) {
+              Collections.sort(verts,new SortByY());
+              //System.out.println(verts);
+              
+              if(verts.size()==2 || verts.size()==4) {
+                Line f0 = new Line(verts.get(0),verts.get(1));
+                fillList0.add(f0);
+                
+                if(verts.size()==2) { 
+                  ShellBuildDirection sbd = new ShellBuildDirection();
+                  sbd.set(verts.get(0).pathNo, "INNER");
+                  shell.add(sbd);
+                }
+
+              }
+              if(verts.size()==4) {
+                Line f0 =  new Line(verts.get(2),verts.get(3));
+                fillList1.add(f0);
+
+                if(verts.size()==4) { 
+                  ShellBuildDirection sbd = new ShellBuildDirection();
+                  sbd.set(verts.get(2).pathNo, "OUTER");
+                  shell.add(sbd);
+                }
+
+              }
+             
+         }
+      }//all fill
+
+      //play out fillList
+      fillGCode(fillList0);
+      fillGCode(fillList1);
+    }
     public static void main(String[] args) {
 
+       //( -11.190989,-1.5877931,-1.2) to ( -11.812888,-2.443747,-1.2)
+//Line B: Line: ( -11.81289,-2.4437494,-1.2) to ( -11.88199,-2.5388556,-1.2)
+
+      Vertex v1 = new Vertex(-4,10,0);
+      Vertex v2 = new Vertex(-4,0,0);
+      Vertex v3 = new Vertex(-3,3.9,0);
+      Vertex v4 = new Vertex(-4,4,0);
+
+      v1 = new Vertex ( -11.190989,-1.5877931,0 );
+      v2 = new Vertex ( -11.812888,-2.443747,0 );
+      v3 = new Vertex ( -11.81289,-2.4437494,0 );
+      v4 = new Vertex ( -11.88199,-2.5388556,0 );
+
+      Line w = new Line(v1,v2);
+      Line ww = new Line(v3,v4);
+      Vertex vv = Line.getIntersection(ww,w,true);
+      
+      //Vertex n = w.getNormal();
+      
+      System.out.println(vv);
+      //w = Line.add(w,n);
+      System.out.println(w);
       // get vertex
       // then triangles
       
@@ -585,21 +1059,32 @@ public class Triangulate {
         //System.out.println(paths); 
       }//else 
       
+      //fill
+      
+      //addFillX(paths);
+      System.out.println("(" + shell + ")");
+
+ 
       System.out.println("( paths: " + paths.size() + ")");
       for(List<Line> path : paths) {
 
         //remove isolated lines
-        
-        if(path.size() > 1) {
+        if(path.size() > 2) {
+
           convertToGcode(path,z,1.0f);
+          System.out.println("(inset)");
+          convertVertexToGcode(makeInsetPath(path),z);
           //convertToGcode(path,z,0.95f);
           //convertToGcode(path,z,0.90f);
+
         }
       }
       paths.clear();
       lines.clear();
       z+=dz;
       }while(z<(maxZ - minZ + dz));
+
+      
     }//main
     
 
