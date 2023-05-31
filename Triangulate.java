@@ -746,7 +746,7 @@ public class Triangulate {
     }
     // Line a and b must to joined in path by a's vertex and b's vertex 2 the same.
     // true == ccw
-    public static boolean getWindiness(Line a, Line b) {
+    public static Vertex getWindiness(Line a, Line b) {
       //System.out.println(a + "  " + b);
       Vertex v1 = a.getVertex1();
       Vertex v2 = a.getVertex2();
@@ -754,20 +754,63 @@ public class Triangulate {
       Tri t = new Tri(v1,v2,v3);
 
       Vertex n = t.getNormal();
+
+      //System.out.println("( windiness normal : " + n + " )");
+
+      //if(n.z>0) return true;
+      //else return false;
+      return n;
+    }
+    public static boolean getWindiness(List<Line> path) {
+      Line lineA = path.get(0);
+      Vertex n = new Vertex(0,0,0);
+
+      for(int i=1;i<path.size();i++) {
+        Line lineB = path.get(i);
+        Vertex s = getWindiness(lineA, lineB);
+        n = Vertex.add(n,s);
+        lineA = lineB;
+      }
       System.out.println("( windiness normal : " + n + " )");
 
       if(n.z>0) return true;
       else return false;
+      
+      
     }
+
+    public static boolean getWindiness(List<Line> path, boolean b) {
+      Line lineA = path.get(0);
+      float sum = 0.0f;
+      Vertex v1 = lineA.getVertex1();
+      Vertex v2 = lineA.getVertex2();
+      
+      for(int i=1;i<path.size();i++) {
+        
+        sum += (v2.x-v1.x) * (v2.y+v1.y);
+        v1=v2;
+        Line lineB = path.get(i);
+        v2 = lineB.getVertex2();
+
+      }
+      System.out.println("( windiness sum : " + sum + " )");
+
+      if(sum<0) return true;
+      else return false;
+      
+    }
+
     public static List<Vertex> makeInsetPath(List<Line> path, boolean negateOffset) {
 
       List<Vertex> insetPath = new ArrayList<>();
 
-      float shellOffset = -0.4f;
+      float shellOffset = 0.4f;
       if(negateOffset) shellOffset = -shellOffset;
       path = merge(path);
-      
-      boolean windiness = getWindiness(path.get(0),path.get(1)); 
+
+      if(path.size()<2) return insetPath;
+
+      boolean windiness = getWindiness(path,true); 
       if(!windiness) {
         Collections.reverse(path);
 
@@ -775,7 +818,7 @@ public class Triangulate {
           l.swapVerts();
         }
       }
-      windiness = getWindiness(path.get(0),path.get(1));
+      windiness = getWindiness(path,true);
 
       Line g = path.get(0);
       Vertex n = g.getNormal();
@@ -1158,7 +1201,7 @@ public class Triangulate {
 
           convertToGcode(path,z,1.0f);
           System.out.println("(inset)");
-          convertVertexToGcode(makeInsetPath(path,pathNo==1),z);
+          convertVertexToGcode(makeInsetPath(path,false),z);
           //convertToGcode(path,z,0.95f);
           //convertToGcode(path,z,0.90f);
 
