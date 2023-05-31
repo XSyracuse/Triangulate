@@ -74,6 +74,11 @@ class Line {
   public Line reverseLine() {
     return new Line(v2, v1);
   }
+  public void swapVerts() {
+    Vertex t = v1;
+    v1 = v2;
+    v2 = t;
+  }
   public double distanceVertex1(Line l) {
     double dx = l.v1.x - v1.x;
     double dy = l.v1.y - v1.y;
@@ -138,10 +143,34 @@ class Line {
             
   }
 
+  public static Line mergeLines(Line a, Line b) {
+    Vertex v1 = a.getVertex1();
+    Vertex v2 = b.getVertex2();
+    return new Line(v1,v2);
+  }
+  public static boolean isColinear(Line a, Line b) {
+      float x1 = a.getVertex1().x;
+            float x2 = a.getVertex2().x;
+
+            float y1 = a.getVertex1().y;
+            float y2 = a.getVertex2().y;
+
+            float x3 = b.getVertex1().x;
+            float x4 = b.getVertex2().x;
+
+            float y3 = b.getVertex1().y;
+            float y4 = b.getVertex2().y;
+
+            double d = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+
+            if(Math.abs(d) > 0.0001) return false;
+            else return true;
+
+  }
   public static Vertex getIntersection(Line a,Line b,boolean c){
             
-            System.out.println("Line A: " + a);
-            System.out.println("Line B: " + b);
+            //System.out.println("(Line A: " + a + ")");
+            //System.out.println("(Line B: " + b + ")");
 
             float x1 = a.getVertex1().x;
             float x2 = a.getVertex2().x;
@@ -167,7 +196,7 @@ class Line {
                  py = py/d; 
             } 
             else {
-                 System.out.println("coincident lines: fix this algorithm");
+                 //System.out.println("coincident lines: fix this algorithm");
 
                  px = x1+(x4-x2);  
                  //px = x2;
@@ -689,30 +718,85 @@ public class Triangulate {
             return lines;
     }
 
-    public static List<Vertex> makeInsetPath(List<Line> path) {
+    public static List<Line> merge(List<Line> path) {
+       List<Line> newPath = new ArrayList<>();
+       
+       //start
+       Line g = path.get(0);
+       newPath.add(g);
+       int j=0;
+       for(int i=1;i<path.size();i++) {
+         
+         Line lineA = newPath.get(j);
+         Line lineB = path.get(i);
+         boolean co = Line.isColinear(lineA, lineB);
+         if(co) {
+           Line m = Line.mergeLines(lineA, lineB);
+           newPath.set(j, m);
+           
+         }else {
+           newPath.add(lineB);
+           j+=1;
+         }
+         
+           
+       }
+       System.out.println("( was: "+path.size() + " now: " + j + ")");
+       return newPath;
+    }
+    // Line a and b must to joined in path by a's vertex and b's vertex 2 the same.
+    // true == ccw
+    public static boolean getWindiness(Line a, Line b) {
+      //System.out.println(a + "  " + b);
+      Vertex v1 = a.getVertex1();
+      Vertex v2 = a.getVertex2();
+      Vertex v3 = b.getVertex2();
+      Tri t = new Tri(v1,v2,v3);
+
+      Vertex n = t.getNormal();
+      System.out.println("( windiness normal : " + n + " )");
+
+      if(n.z>0) return true;
+      else return false;
+    }
+    public static List<Vertex> makeInsetPath(List<Line> path, boolean negateOffset) {
 
       List<Vertex> insetPath = new ArrayList<>();
+
+      float shellOffset = -0.4f;
+      if(negateOffset) shellOffset = -shellOffset;
+      path = merge(path);
+      
+      boolean windiness = getWindiness(path.get(0),path.get(1)); 
+      if(!windiness) {
+        Collections.reverse(path);
+
+        for(Line l : path) {
+          l.swapVerts();
+        }
+      }
+      windiness = getWindiness(path.get(0),path.get(1));
 
       Line g = path.get(0);
       Vertex n = g.getNormal();
       //move line A along normal
-      Line r = Line.add(g,n,-0.4f); 
+      Line r = Line.add(g,n,shellOffset); 
 
       for(int i=1;i<path.size();i++) {
         
         Line g1 = path.get(i);
         Vertex n1 = g1.getNormal();
         //move line B along normal
-        Line r1 = Line.add(g1,n1,-0.4f);
+        Line r1 = Line.add(g1,n1,shellOffset);
 
-        System.out.println("inset loop");
-        System.out.println(r + "  \n");
-        System.out.println(g1 + "::: normal => " + n1 + " = \n" + r1 +"\n");
+        //System.out.println("inset loop");
+        //System.out.println(r + "  \n");
+        //System.out.println(g1 + "::: normal => " + n1 + " = \n" + r1 +"\n");
 
         Vertex intersection = Line.getIntersection(r,r1,true);
 
-        System.out.println("intersection " + intersection);
-        System.out.println("");
+        //System.out.println("intersection " + intersection);
+        //System.out.println("");
 
         //Vertex intersection = g.getVertex1();
 
@@ -779,7 +863,10 @@ public class Triangulate {
       StringBuilder sb = new StringBuilder();
       String fmt0 = "G0 X%.4f Y%.4f\n";
       String fmt = "G1 X%.4f Y%.4f\n";
+
       // move to first
+      if(pathIn.size()==0) return;
+
       float x0 =  path.get(0).x;
       float y0 =  path.get(0).y;
       
@@ -905,9 +992,6 @@ public class Triangulate {
     }
     public static void main(String[] args) {
 
-       //( -11.190989,-1.5877931,-1.2) to ( -11.812888,-2.443747,-1.2)
-//Line B: Line: ( -11.81289,-2.4437494,-1.2) to ( -11.88199,-2.5388556,-1.2)
-
       Vertex v1 = new Vertex(-4,10,0);
       Vertex v2 = new Vertex(-4,0,0);
       Vertex v3 = new Vertex(-3,3.9,0);
@@ -924,9 +1008,9 @@ public class Triangulate {
       
       //Vertex n = w.getNormal();
       
-      System.out.println(vv);
+      //System.out.println(vv);
       //w = Line.add(w,n);
-      System.out.println(w);
+      //System.out.println(w);
       // get vertex
       // then triangles
       
@@ -1066,23 +1150,25 @@ public class Triangulate {
 
  
       System.out.println("( paths: " + paths.size() + ")");
+      int pathNo = 0;
       for(List<Line> path : paths) {
 
         //remove isolated lines
-        if(path.size() > 2) {
+        if(path.size() > 1) {
 
           convertToGcode(path,z,1.0f);
           System.out.println("(inset)");
-          convertVertexToGcode(makeInsetPath(path),z);
+          convertVertexToGcode(makeInsetPath(path,pathNo==1),z);
           //convertToGcode(path,z,0.95f);
           //convertToGcode(path,z,0.90f);
 
         }
+        pathNo++;
       }
       paths.clear();
       lines.clear();
       z+=dz;
-      }while(z<(maxZ - minZ + dz));
+      }while(z<(maxZ - minZ - dz));
 
       
     }//main
