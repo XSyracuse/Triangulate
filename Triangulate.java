@@ -65,6 +65,10 @@ class Line {
     this.v2 = v2;
 
   }
+  public Line(Line line) {
+    this.v1 = line.v1;
+    this.v2 = line.v2;
+  }
   public Vertex getVertex1() {
     return v1;
   }
@@ -624,6 +628,16 @@ class ShellBuildSet {
        
     }
 
+    public String findByPathNo(int pathNo){
+
+      for(ShellBuildDirection s : shellSet) {
+        if(s.pathNo == pathNo) {
+          return s.shellType;
+        }
+      }
+      return "NONE";
+    }
+
     public String toString() {
       return shellSet.toString();
     }
@@ -778,7 +792,11 @@ public class Triangulate {
       
       
     }
-
+    /** This uses area calc to determine the windiness
+    *   positive indicates a clockwise winding
+    *   This method returns true indicates counter clockwise
+    *   BTW multiply by 0.5f to get the area.
+    */
     public static boolean getWindiness(List<Line> path, boolean b) {
       Line lineA = path.get(0);
       float sum = 0.0f;
@@ -800,12 +818,18 @@ public class Triangulate {
       
     }
 
-    public static List<Vertex> makeInsetPath(List<Line> path, boolean negateOffset) {
+    //make a shell Inset from path
+    //this screws up the Line objects in path
+    //so send a deep copy to avoid issues.
+
+    public static List<Vertex> makeInsetPath(List<Line> path, boolean negateOffset, float offset) {
 
       List<Vertex> insetPath = new ArrayList<>();
 
-      float shellOffset = 0.4f;
+      float shellOffset = offset;
       if(negateOffset) shellOffset = -shellOffset;
+
+      //merge colinear segments
       path = merge(path);
 
       if(path.size()<2) return insetPath;
@@ -820,6 +844,7 @@ public class Triangulate {
       }
       windiness = getWindiness(path,true);
 
+     
       Line g = path.get(0);
       Vertex n = g.getNormal();
       //move line A along normal
@@ -968,7 +993,7 @@ public class Triangulate {
       System.out.println(sb);
 
     }
-    public static void addFillX(List<List<Line>> paths) {
+    public static void addFillX(List<List<Line>> paths, boolean writeOutput) {
       List<Line> fillList0 = new ArrayList<Line>();
       List<Line> fillList1 = new ArrayList<Line>();
 
@@ -1030,8 +1055,20 @@ public class Triangulate {
       }//all fill
 
       //play out fillList
-      fillGCode(fillList0);
-      fillGCode(fillList1);
+      if(writeOutput) {
+        fillGCode(fillList0);
+        fillGCode(fillList1);
+      }
+
+    }
+    public static List<Line> deepCopyPath(List<Line> path) {
+      List<Line> r = new ArrayList<>();
+      
+      for(Line line : path) {
+        r.add(new Line(line));
+      }
+      
+      return r;
     }
     public static void main(String[] args) {
 
@@ -1187,13 +1224,15 @@ public class Triangulate {
       }//else 
       
       //fill
-      
-      //addFillX(paths);
+      //use fill algorithm to figure out shell inner or outer
+
+      addFillX(paths, false);
       System.out.println("(" + shell + ")");
 
  
       System.out.println("( paths: " + paths.size() + ")");
       int pathNo = 0;
+      boolean isOuter = false;
       for(List<Line> path : paths) {
 
         //remove isolated lines
@@ -1201,7 +1240,20 @@ public class Triangulate {
 
           convertToGcode(path,z,1.0f);
           System.out.println("(inset)");
-          convertVertexToGcode(makeInsetPath(path,false),z);
+          //get the paths inner or outer -ness  
+          String Shellness = shell.findByPathNo(pathNo);
+          if (Shellness.equals("OUTER")) {
+            isOuter = true;
+          }
+          else {
+            isOuter = false;
+          }
+          List<Line> tempPath = deepCopyPath(path);
+          convertVertexToGcode(makeInsetPath(tempPath,isOuter,0.4f),z);
+          tempPath = deepCopyPath(path);
+          convertVertexToGcode(makeInsetPath(tempPath,isOuter,0.8f),z);
+          tempPath = deepCopyPath(path);
+          convertVertexToGcode(makeInsetPath(tempPath,isOuter,1.2f),z);
           //convertToGcode(path,z,0.95f);
           //convertToGcode(path,z,0.90f);
 
