@@ -1024,6 +1024,8 @@ public class Triangulate {
 
          }//all paths considered
 
+         //this only handles up to four intersections
+         //TODO: fix
          if(verts.size()>1) {
               Collections.sort(verts,new SortByY());
               //System.out.println(verts);
@@ -1039,9 +1041,13 @@ public class Triangulate {
                 }
 
               }
-              if(verts.size()==4) {
-                Line f0 =  new Line(verts.get(2),verts.get(3));
+              if(verts.size()==4 || verts.size()==6) {
+                Line f0 = new Line(verts.get(2),verts.get(3));
                 fillList1.add(f0);
+
+                ShellBuildDirection sbd0 = new ShellBuildDirection();
+                sbd0.set(verts.get(0).pathNo, "INNER");
+                shell.add(sbd0);
 
                 if(verts.size()==4) { 
                   ShellBuildDirection sbd = new ShellBuildDirection();
@@ -1050,7 +1056,27 @@ public class Triangulate {
                 }
 
               }
-             
+              
+              if(verts.size()==6) {
+
+                //Line f0 = new Line(verts.get(4),verts.get(5));
+                //fillList2.add(f0);
+
+                ShellBuildDirection sbd0 = new ShellBuildDirection();
+                sbd0.set(verts.get(0).pathNo, "INNER");
+                shell.add(sbd0);
+
+                ShellBuildDirection sbd1 = new ShellBuildDirection();
+                sbd1.set(verts.get(2).pathNo, "OUTER");
+                shell.add(sbd1);
+
+                if(verts.size()==6) {
+                  ShellBuildDirection sbd = new ShellBuildDirection();
+                  sbd.set(verts.get(4).pathNo, "OUTER");
+                  shell.add(sbd);
+
+                }
+              }//six
          }
       }//all fill
 
@@ -1234,6 +1260,7 @@ public class Triangulate {
       int pathNo = 0;
       boolean isOuter = false;
       for(List<Line> path : paths) {
+        System.out.println("( PathNo: " + pathNo + " )");
 
         //remove isolated lines
         if(path.size() > 1) {
@@ -1242,6 +1269,10 @@ public class Triangulate {
           System.out.println("(inset)");
           //get the paths inner or outer -ness  
           String Shellness = shell.findByPathNo(pathNo);
+          if (Shellness.equals("NONE")) {
+            isOuter=false;
+            System.out.println("(shellness None for: " + pathNo + ")");
+          }
           if (Shellness.equals("OUTER")) {
             isOuter = true;
           }
